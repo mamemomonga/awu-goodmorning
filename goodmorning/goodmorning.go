@@ -16,11 +16,13 @@ func NewGoodMorning() (t *GoodMorning) {
 	return t
 }
 
-func (t *GoodMorning) Say() {
+func (t *GoodMorning) Print(pathCode string) {
+
+	// 現在の日時を得る
 	di := t.GetDateInfo()
 
-	// 140000は神奈川県の気象情報
-	wa, err := t.GetWeather("140000")
+	// 現在の天気を得る
+	wa, err := t.GetWeather(pathCode)
 	if err != nil {
 		log.Fatal(err)
 	}
