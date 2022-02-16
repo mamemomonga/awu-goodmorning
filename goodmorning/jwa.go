@@ -25,12 +25,13 @@ type Weather struct {
 	Publish  string
 }
 
-// FetchWeather is 天気情報の取得
+// GetWeather is 天気情報の取得
 func (t *GoodMorning) GetWeather(pathCode string) (res Weather, err error) {
 	err = nil
 	//気象庁のjsonから取得
 
 	url := fmt.Sprintf("https://www.jma.go.jp/bosai/forecast/data/overview_forecast/%s.json", pathCode)
+	// log.Println(url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return
