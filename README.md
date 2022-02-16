@@ -36,7 +36,7 @@
 
 地域を選んで気象情報を表示
 
-	$ bin/goodmorning -k
+	$ bin/goodmorning -s
 
 地域を選んでマストドンに投稿
 
