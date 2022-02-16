@@ -43,3 +43,26 @@ func (t *GoodMorning) Print(pathCode string) {
 	//区切り線
 	fmt.Println(fmtHR)
 }
+func (t *GoodMorning) String(pathCode string) string {
+
+	// 現在の日時を得る
+	di := t.GetDateInfo()
+
+	// 現在の天気を得る
+	wa, err := t.GetWeather(pathCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	const splt = "▲▽▲▽▲▽"
+	buf := splt + "\n"
+	buf = buf + "今日は" + di.Date + "です。" + "今年は残り" + di.RemainDays + "日です\n"
+	buf = buf + "現在の時刻は" + di.Time + "です。\n"
+	buf = buf + splt + "\n"
+	buf = buf + wa.AreaName + "の天気" + "\n"
+	buf = buf + wa.Text + "\n"
+	buf = buf + "(" + wa.Publish + "発表）" + "\n"
+	buf = buf + splt + "\n"
+
+	return buf
+}
