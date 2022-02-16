@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sort"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -45,26 +46,6 @@ func (t *GoodMorning) GetWeatherArea() (data WeatherJWAArea, err error) {
 	return data, nil
 }
 
-func (t *GoodMorning) weatherAreaFlatten(s WeatherJWAArea) (data map[string]WeatherJWAPlace) {
-	data = map[string]WeatherJWAPlace{}
-	for c, p := range s.Centers {
-		data[c] = p
-	}
-	for c, p := range s.Offices {
-		data[c] = p
-	}
-	//	for c, p := range s.Class10s {
-	//		data[c] = p
-	//	}
-	//	for c, p := range s.Class15s {
-	//		data[c] = p
-	//	}
-	//	for c, p := range s.Class20s {
-	//		data[c] = p
-	//	}
-	return
-}
-
 func (t *GoodMorning) WeatherAreaSelect(callback func(string)) (err error) {
 
 	type refDT struct {
@@ -73,9 +54,7 @@ func (t *GoodMorning) WeatherAreaSelect(callback func(string)) (err error) {
 		children []string
 	}
 
-	arearaw, err := t.GetWeatherArea()
-	area := t.weatherAreaFlatten(arearaw)
-
+	area, err := t.GetWeatherArea()
 	app := tview.NewApplication()
 	root := tview.NewTreeNode("場所を選択").
 		SetColor(tcell.ColorRed)
@@ -83,54 +62,68 @@ func (t *GoodMorning) WeatherAreaSelect(callback func(string)) (err error) {
 		SetRoot(root).
 		SetCurrentNode(root)
 
-	appender := func(tg *tview.TreeNode, cd string, ar WeatherJWAPlace) {
-		node := tview.NewTreeNode(fmt.Sprintf("  %s [%s]", ar.Name, cd)).
-			SetReference(refDT{code: cd, children: ar.Children, name: ar.Name}).
-			SetSelectable(true)
-		tg.AddChild(node)
-	}
+	// 子供を追加する処理
+	// appender := func(tg *tview.TreeNode, cd string, ar WeatherJWAPlace) {
+	// 	node := tview.NewTreeNode(fmt.Sprintf("  %s [%s]", ar.Name, cd)).
+	// 		SetReference(refDT{code: cd, children: ar.Children, name: ar.Name}).
+	// 		SetSelectable(true)
+	// 	tg.AddChild(node)
+	// }
 
-	add := func(target *tview.TreeNode, parent string) bool {
-		hasChild := false
+	// 追加する処理
+	add := func(target *tview.TreeNode, parent string) {
+		// ルートメニュー(Centers)
+		// 並び順: コード番号でソートする
 		if parent == "" {
-			for cd, ar := range arearaw.Centers {
-				appender(target, cd, ar)
-				hasChild = true
+			centers := make([]string, len(area.Centers))
+			idx := 0
+			for cd := range area.Centers {
+				centers[idx] = cd
+				idx++
 			}
-		} else {
-			for cd, ar := range area {
-				if cd == parent {
-					appender(target, cd, ar)
-					hasChild = true
-				}
+			sort.Strings(centers)
+			for _, cd := range centers {
+				ar := area.Centers[cd]
+				node := tview.NewTreeNode(fmt.Sprintf("  %s [%s]", ar.Name, cd)).
+					SetReference(refDT{code: cd, children: ar.Children, name: ar.Name}).
+					SetSelectable(true)
+				target.AddChild(node)
+			}
+			return
+		}
+		// サブメニュー(Offices)
+		// 並び順: CentersのChildren順に準ずる
+		for cd, ar := range area.Offices {
+			if cd == parent {
+				node := tview.NewTreeNode(fmt.Sprintf("  %s [%s]", ar.Name, cd)).
+					SetReference(refDT{code: cd, children: nil, name: ar.Name}).
+					SetSelectable(true)
+				target.AddChild(node)
 			}
 		}
-		return hasChild
 	}
+
 	add(root, "")
+
+	// 選択されたときの処理
 	tree.SetSelectedFunc(func(node *tview.TreeNode) {
 		ref := node.GetReference()
 		if ref == nil {
 			app.Stop()
-			return // Selecting the root node does nothing.
+			return
 		}
 		rf := ref.(refDT)
 		children := node.GetChildren()
-		last := false
 		if len(children) == 0 {
 			if len(rf.children) == 0 {
-				last = true
-			}
-			for _, c := range rf.children {
-				if !add(node, c) {
-					last = true
-				}
-			}
-			if last {
+				// 子に追加する処理がなければ終了
 				app.Stop()
 				callback(rf.code)
+			} else {
+				for _, c := range rf.children {
+					add(node, c)
+				}
 			}
-
 		} else {
 			node.SetExpanded(!node.IsExpanded())
 		}
